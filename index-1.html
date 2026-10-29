@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#10172a">
+<title>내 여친은 존재하기는 할까?</title>
+<style>
+  :root { color-scheme: dark; --bg:#10172a; --panel:#19233b; --cream:#fff2d8; --gold:#f4c76b; --muted:#aeb9d1; --pink:#ff9db7; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100svh; display:grid; place-items:center; padding:24px; font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif; color:var(--cream); background:radial-gradient(ellipse at 50% 5%,#293b63 0%,var(--bg) 62%); }
+  .app { width:min(100%,440px); text-align:center; }
+  .eyebrow { font-size:.76rem; letter-spacing:.24em; color:var(--gold); font-weight:800; }
+  h1 { margin:14px 0 8px; font-size:clamp(2rem,8vw,3rem); line-height:1.2; letter-spacing:-.06em; }
+  .subtitle { color:var(--muted); margin:0 auto 28px; line-height:1.7; font-size:.95rem; }
+  .passport-button { width:188px; height:230px; border:1px solid #f4c76b99; border-radius:18px; background:linear-gradient(145deg,#244e52,#15373e 58%,#102b34); color:var(--gold); cursor:pointer; box-shadow:0 18px 40px #0005,inset 0 0 0 7px #ffffff0a; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; margin:0 auto 22px; position:relative; transition:transform .2s,filter .2s; }
+  .passport-button::before { content:""; position:absolute; inset:10px; border:1px solid #f4c76b55; border-radius:11px; pointer-events:none; }
+  .passport-button:hover { transform:translateY(-4px) rotate(-1deg); filter:brightness(1.12); }
+  .passport-button:active { transform:scale(.97); }
+  .passport-button:focus-visible,.action:focus-visible { outline:3px solid white; outline-offset:4px; }
+  .passport-icon { font-size:4.8rem; line-height:1; filter:drop-shadow(0 5px 7px #0004); }
+  .passport-label { font-size:.75rem; letter-spacing:.22em; font-weight:900; }
+  .hint { color:var(--muted); font-size:.85rem; margin-bottom:28px; }
+  .result { display:none; background:linear-gradient(155deg,#202e4c,#172039); border:1px solid #ffffff20; border-radius:24px; padding:24px 20px; margin:0 0 18px; box-shadow:0 18px 40px #0003; animation:pop .35s ease-out; }
+  .result.show { display:block; }
+  @keyframes pop { from { opacity:0; transform:translateY(10px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+  .result-kicker { color:var(--pink); font-size:.78rem; letter-spacing:.15em; font-weight:800; }
+  .city { font-size:clamp(2rem,9vw,3rem); font-weight:900; margin:8px 0 2px; letter-spacing:-.05em; }
+  .country { color:var(--gold); font-weight:700; }
+  .message { margin:18px 0 0; line-height:1.7; font-weight:750; font-size:1.12rem; }
+  .actions { display:flex; gap:10px; }
+  .action { flex:1; border:0; border-radius:14px; padding:15px 12px; font:inherit; font-weight:800; cursor:pointer; transition:transform .15s,opacity .15s; }
+  .action:active { transform:scale(.98); }
+  .primary { color:#172039; background:var(--gold); }
+  .secondary { color:var(--cream); background:#ffffff12; border:1px solid #ffffff24; }
+  .footnote { color:#8997b5; font-size:.72rem; margin-top:24px; }
+  .toast { min-height:1.3em; color:var(--gold); font-size:.82rem; margin-top:12px; }
+  @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="eyebrow">LOVE IS AROUND THE WORLD</div>
+  <h1>내 여친은<br>존재하기는 할까?</h1>
+  <p class="subtitle">지구 어딘가에 있을 그 사람…<br>오늘은 어느 수도에서 찾게 될까?</p>
+
+  <button class="passport-button" id="drawButton" aria-label="여권을 눌러 여행지를 뽑기">
+    <span class="passport-icon" aria-hidden="true">🛂</span>
+    <span class="passport-label">PASSPORT</span>
+    <span style="font-size:.72rem;color:#e7d7ad">DESTINATION UNKNOWN</span>
+  </button>
+  <div class="hint" id="hint">여권을 눌러 운명의 수도를 확인해 봐</div>
+
+  <section class="result" id="result" aria-live="polite">
+    <div class="result-kicker">YOUR DESTINATION</div>
+    <div class="city" id="city">도쿄</div>
+    <div class="country" id="country">일본</div>
+    <p class="message">나의 연인은 이 곳에 있을지도?</p>
+  </section>
+
+  <div class="actions" id="actions" hidden>
+    <button class="action primary" id="shareButton">↗ 공유하기</button>
+    <button class="action secondary" id="againButton">다시 뽑기 ↻</button>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <p class="footnote">※ 운명의 수도는 무작위로 정해져요. 사랑의 위치를 보장하진 않습니다. ♡</p>
+</main>
+<script>
+const capitals = [
+  ["서울","대한민국"],["도쿄","일본"],["베이징","중국"],["타이베이","대만"],["울란바토르","몽골"],
+  ["평양","북한"],["하노이","베트남"],["비엔티안","라오스"],["프놈펜","캄보디아"],["방콕","태국"],
+  ["네피도","미얀마"],["쿠알라룸푸르","말레이시아"],["싱가포르","싱가포르"],["반다르스리브가완","브루나이"],
+  ["자카르타","인도네시아"],["마닐라","필리핀"],["다카","방글라데시"],["카트만두","네팔"],["팀푸","부탄"],
+  ["뉴델리","인도"],["이슬라마바드","파키스탄"],["카불","아프가니스탄"],["테헤란","이란"],["바그다드","이라크"],
+  ["리야드","사우디아라비아"],["아부다비","아랍에미리트"],["도하","카타르"],["쿠웨이트시티","쿠웨이트"],
+  ["암만","요르단"],["베이루트","레바논"],["예루살렘","이스라엘"],["앙카라","튀르키예"],["트빌리시","조지아"],
+  ["예레반","아르메니아"],["바쿠","아제르바이잔"],["아스타나","카자흐스탄"],["타슈켄트","우즈베키스탄"],
+  ["비슈케크","키르기스스탄"],["두샨베","타지키스탄"],["아시가바트","투르크메니스탄"],
+  ["런던","영국"],["파리","프랑스"],["베를린","독일"],["로마","이탈리아"],["마드리드","스페인"],
+  ["리스본","포르투갈"],["암스테르담","네덜란드"],["브뤼셀","벨기에"],["룩셈부르크","룩셈부르크"],
+  ["베른","스위스"],["빈","오스트리아"],["프라하","체코"],["브라티슬라바","슬로바키아"],["바르샤바","폴란드"],
+  ["부다페스트","헝가리"],["아테네","그리스"],["소피아","불가리아"],["부쿠레슈티","루마니아"],["키시너우","몰도바"],
+  ["키이우","우크라이나"],["민스크","벨라루스"],["빌뉴스","리투아니아"],["리가","라트비아"],["탈린","에스토니아"],
+  ["스톡홀름","스웨덴"],["오슬로","노르웨이"],["헬싱키","핀란드"],["코펜하겐","덴마크"],["레이캬비크","아이슬란드"],
+  ["더블린","아일랜드"],["자그레브","크로아티아"],["류블랴나","슬로베니아"],["사라예보","보스니아 헤르체고비나"],
+  ["베오그라드","세르비아"],["포드고리차","몬테네그로"],["스코페","북마케도니아"],["티라나","알바니아"],
+  ["모스크바","러시아"],["워싱턴 D.C.","미국"],["오타와","캐나다"],["멕시코시티","멕시코"],["과테말라시티","과테말라"],
+  ["파나마시티","파나마"],["아바나","쿠바"],["킹스턴","자메이카"],["산토도밍고","도미니카공화국"],
+  ["포트오브스페인","트리니다드 토바고"],["보고타","콜롬비아"],["카라카스","베네수엘라"],["키토","에콰도르"],
+  ["리마","페루"],["라파스","볼리비아"],["산티아고","칠레"],["부에노스아이레스","아르헨티나"],
+  ["몬테비데오","우루과이"],["아순시온","파라과이"],["브라질리아","브라질"],["조지타운","가이아나"],
+  ["파라마리보","수리남"],["카이엔","프랑스령 기아나"],["캔버라","호주"],["웰링턴","뉴질랜드"],
+  ["포트모르즈비","파푸아뉴기니"],["수바","피지"],["호니아라","솔로몬 제도"],["누쿠알로파","통가"],
+  ["아피아","사모아"],["포트빌라","바누아투"],["카이로","이집트"],["트리폴리","리비아"],["튀니스","튀니지"],
+  ["알제","알제리"],["라바트","모로코"],["누악쇼트","모리타니"],["다카르","세네갈"],["반줄","감비아"],
+  ["코나크리","기니"],["프리타운","시에라리온"],["몬로비아","라이베리아"],["아크라","가나"],["로메","토고"],
+  ["포르토노보","베냉"],["와가두구","부르키나파소"],["니아메","니제르"],["아부자","나이지리아"],
+  ["은자메나","차드"],["방기","중앙아프리카공화국"],["야운데","카메룬"],["말라보","적도 기니"],
+  ["리브르빌","가봉"],["브라자빌","콩고공화국"],["킨샤사","콩고민주공화국"],["캄팔라","우간다"],
+  ["나이로비","케냐"],["도도마","탄자니아"],["키갈리","르완다"],["부줌부라","부룬디"],
+  ["아디스아바바","에티오피아"],["아스마라","에리트레아"],["지부티","지부티"],["모가디슈","소말리아"],
+  ["하르툼","수단"],["주바","남수단"],["캄팔라","우간다"],["안타나나리보","마다가스카르"],
+  ["포트루이스","모리셔스"],["빅토리아","세이셸"],["루사카","잠비아"],["하라레","짐바브웨"],
+  ["가보로네","보츠와나"],["빈트후크","나미비아"],["프리토리아","남아프리카공화국"],["마푸투","모잠비크"],
+  ["릴롱궤","말라위"],["음바바네","에스와티니"],["마세루","레소토"],["루안다","앙골라"],
+  ["키갈리","르완다"],["모로니","코모로"],["니코시아","키프로스"],["발레타","몰타"]
+];
+
+const drawButton = document.getElementById("drawButton");
+const result = document.getElementById("result");
+const actions = document.getElementById("actions");
+const hint = document.getElementById("hint");
+const toast = document.getElementById("toast");
+let current = null;
+
+function drawDestination() {
+  current = capitals[Math.floor(Math.random() * capitals.length)];
+  document.getElementById("city").textContent = current[0];
+  document.getElementById("country").textContent = current[1];
+  result.classList.remove("show");
+  void result.offsetWidth;
+  result.classList.add("show");
+  actions.hidden = false;
+  hint.textContent = "운명의 목적지가 정해졌어!";
+  toast.textContent = "";
+}
+drawButton.addEventListener("click", drawDestination);
+document.getElementById("againButton").addEventListener("click", drawDestination);
+
+document.getElementById("shareButton").addEventListener("click", async () => {
+  if (!current) return;
+  const message = `내 여친은 존재하기는 할까?\n나의 연인은 ${current[1]}의 수도 ${current[0]}에 있을지도? ♡`;
+  const url = window.location.href;
+  const shareText = `${message}\n\n게임 URL: ${url}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: "내 여친은 존재하기는 할까?",
+        text: message,
+        url: url
+      });
+      toast.textContent = "결과 메시지와 URL을 공유했어!";
+    } else if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(shareText);
+      toast.textContent = "결과 메시지와 URL을 복사했어!";
+    } else {
+      const field = document.createElement("textarea");
+      field.value = shareText;
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.appendChild(field);
+      field.select();
+      const copied = document.execCommand("copy");
+      field.remove();
+      toast.textContent = copied ? "결과 메시지와 URL을 복사했어! 원하는 곳에 붙여넣어 줘." : "공유가 지원되지 않아. 결과를 직접 캡처해 줘!";
+    }
+  } catch (error) {
+    if (error.name !== "AbortError") toast.textContent = "공유가 완료되지 않았어. 결과를 캡처하거나 메시지와 URL을 직접 복사해 줘!";
+  }
+});
+</script>
+</body>
+</html>
